@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebFlow Lab — Interactive Web Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #080c14;
+    --bg2: #0d1421;
+    --bg3: #111827;
+    --surface: #141e2e;
+    --surface2: #1a2538;
+    --border: #1f2d42;
+    --border2: #243345;
+    --blue: #3b82f6;
+    --blue-dim: #1d4ed8;
+    --blue-glow: rgba(59,130,246,0.15);
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.15);
+    --yellow: #f59e0b;
+    --yellow-glow: rgba(245,158,11,0.15);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.15);
+    --purple: #a855f7;
+    --purple-glow: rgba(168,85,247,0.15);
+    --orange: #f97316;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-mid: #94a3b8;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .sidebar-logo {
+    padding: 20px 16px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo span {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+  .sidebar-logo p {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+  .nav-group-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 14px 16px 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface); }
+  .nav-item.active { color: var(--cyan); background: rgba(6,182,212,0.08); border-left-color: var(--cyan); }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+  .nav-item.active .nav-dot { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+  /* MAIN */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--bg);
+  }
+
+  .section { display: none; min-height: 100vh; padding: 32px 40px; }
+  .section.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .section-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+
+  /* INPUTS */
+  .input-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  input[type=text], select, textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border 0.2s;
+    width: 100%;
+  }
+  input[type=text]:focus, select:focus, textarea:focus { border-color: var(--cyan); }
+  select option { background: var(--bg3); }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .btn-cyan { background: var(--cyan); color: #000; }
+  .btn-cyan:hover { background: #22d3ee; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(6,182,212,0.3); }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-green:hover { background: #34d399; }
+  .btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text-mid); }
+  .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); }
+  .btn-sm { padding: 6px 12px; font-size: 11px; }
+
+  /* FLOW DIAGRAM */
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 18px 0;
+  }
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    transition: all 0.2s;
+    min-width: 90px;
+  }
+  .flow-node:hover { border-color: var(--blue); background: var(--blue-glow); }
+  .flow-node.active-step { border-color: var(--cyan); background: rgba(6,182,212,0.12); box-shadow: 0 0 18px rgba(6,182,212,0.2); }
+  .flow-node.done-step { border-color: var(--green); background: var(--green-glow); }
+  .flow-node .icon { font-size: 22px; }
+  .flow-node .label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mid); }
+  .flow-arrow {
+    font-size: 18px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    transition: color 0.3s;
+  }
+  .flow-arrow.active { color: var(--cyan); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    position: relative;
+  }
+  .code-line { display: block; }
+  .code-line.clickable { cursor: pointer; border-radius: 3px; padding: 1px 4px; transition: background 0.15s; }
+  .code-line.clickable:hover { background: rgba(59,130,246,0.15); }
+  .code-line.highlighted { background: rgba(59,130,246,0.2); border-left: 2px solid var(--blue); }
+  .kw { color: var(--purple); }
+  .path { color: var(--cyan); }
+  .ver { color: var(--text-dim); }
+  .hkey { color: var(--yellow); }
+  .hval { color: var(--green); }
+  .num { color: var(--orange); }
+
+  /* TOOLTIP */
+  .tooltip-box {
+    background: var(--surface2);
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text);
+    margin-top: 10px;
+    animation: fadeIn 0.2s ease;
+    line-height: 1.6;
+  }
+  .tooltip-box .tt-title { font-weight: 700; color: var(--blue); margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* STATUS CODES */
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .status-card {
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .status-card:hover { transform: translateY(-2px); }
+  .status-card .code { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+  .status-card .name { font-size: 10px; margin-top: 3px; font-weight: 600; }
+  .s2xx { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); }
+  .s2xx .code { color: var(--green); }
+  .s3xx { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); }
+  .s3xx .code { color: var(--blue); }
+  .s4xx { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+  .s4xx .code { color: var(--yellow); }
+  .s5xx { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); }
+  .s5xx .code { color: var(--red); }
+
+  /* LAYERS */
+  .layer {
+    border-radius: 10px;
+    padding: 16px 20px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .layer:hover { transform: translateX(4px); }
+  .layer .l-icon { font-size: 24px; }
+  .layer .l-name { font-weight: 700; font-size: 14px; }
+  .layer .l-desc { font-size: 12px; color: var(--text-mid); margin-top: 2px; }
+  .layer-fe { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.3); }
+  .layer-be { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.3); }
+  .layer-db { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.3); }
+
+  /* PROGRESS STEPS */
+  .step-list { display: flex; flex-direction: column; gap: 10px; }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .step-item.active { border-color: var(--yellow); background: var(--yellow-glow); }
+  .step-item.done { border-color: var(--green); background: var(--green-glow); }
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: var(--mono);
+  }
+  .step-item.active .step-num { background: var(--yellow); color: #000; }
+  .step-item.done .step-num { background: var(--green); color: #000; }
+  .step-text { font-size: 13px; line-height: 1.5; }
+  .step-sub { font-size: 11px; color: var(--text-dim); font-family: var(--mono); margin-top: 3px; }
+
+  /* COOKIE DISPLAY */
+  .cookie-jar {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .cookie-entry { padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
+  .cookie-entry:last-child { border-bottom: none; }
+  .cookie-key { color: var(--yellow); }
+  .cookie-val { color: var(--green); }
+
+  /* HTTP vs HTTPS */
+  .compare-col {
+    flex: 1;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .compare-row { display: flex; gap: 16px; }
+  .http-col { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.25); }
+  .https-col { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.25); }
+
+  /* PACKET ANIMATION */
+  .packet-line {
+    height: 40px;
+    position: relative;
+    background: var(--bg3);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    gap: 10px;
+  }
+  .packet { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .p-plain { background: rgba(239,68,68,0.2); color: var(--red); }
+  .p-enc { background: rgba(16,185,129,0.2); color: var(--green); }
+
+  /* SECURITY QUESTIONS */
+  .sec-question {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: border 0.2s;
+  }
+  .sec-question:hover { border-color: var(--purple); }
+  .sec-question .q { font-weight: 700; font-size: 14px; }
+  .sec-question .a { display: none; margin-top: 12px; font-size: 13px; color: var(--text-mid); line-height: 1.6; padding: 12px; background: var(--purple-glow); border-radius: 6px; }
+  .sec-question.revealed .a { display: block; animation: fadeIn 0.2s; }
+  .sec-question .tag { font-size: 10px; font-family: var(--mono); color: var(--purple); background: var(--purple-glow); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+
+  /* RENDER STAGES */
+  .render-stages { display: flex; flex-direction: column; gap: 10px; }
+  .render-stage {
+    border-radius: 8px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.3s;
+    opacity: 0.4;
+  }
+  .render-stage.lit { opacity: 1; }
+  .render-stage.lit.rs-html { border-color: var(--orange); background: rgba(249,115,22,0.08); }
+  .render-stage.lit.rs-css { border-color: var(--blue); background: var(--blue-glow); }
+  .render-stage.lit.rs-js { border-color: var(--yellow); background: var(--yellow-glow); }
+  .render-stage.lit.rs-final { border-color: var(--green); background: var(--green-glow); }
+  .rs-icon { font-size: 20px; }
+  .rs-info .rs-name { font-weight: 700; font-size: 13px; }
+  .rs-info .rs-detail { font-size: 11px; color: var(--text-dim); font-family: var(--mono); margin-top: 2px; }
+
+  /* MINI PREVIEW */
+  .mini-browser {
+    background: var(--bg3);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .mini-bar {
+    background: var(--surface2);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mini-dots span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+  .mini-url {
+    flex: 1;
+    background: var(--bg3);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-mid);
+  }
+  .mini-content {
+    padding: 20px;
+    min-height: 140px;
+    font-size: 13px;
+  }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); }
+  .badge-blue { background: var(--blue-glow); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .badge-green { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+  .badge-red { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .badge-yellow { background: var(--yellow-glow); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+  .badge-purple { background: var(--purple-glow); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+  .badge-cyan { background: rgba(6,182,212,0.1); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* ANIMATED PULSE */
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes slideRight { from { left: -10%; } to { left: 110%; } }
+  @keyframes blink { 0%,100% { border-color: var(--cyan); } 50% { border-color: transparent; } }
+
+  .pulsing { animation: pulse 1.5s infinite; }
+  .log-line { font-family: var(--mono); font-size: 11px; padding: 3px 0; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+  .log-line .ts { color: var(--text-dim); margin-right: 8px; }
+  .log-line .ok { color: var(--green); }
+  .log-line .warn { color: var(--yellow); }
+  .log-line .err { color: var(--red); }
+  .log-line .info { color: var(--cyan); }
+
+  .tag-method { display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .m-get { background: rgba(16,185,129,0.15); color: var(--green); }
+  .m-post { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .m-put { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .m-del { background: rgba(239,68,68,0.15); color: var(--red); }
+
+  #response-output {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    min-height: 120px;
+    display: none;
+    animation: fadeIn 0.3s;
+    white-space: pre-wrap;
+    line-height: 1.7;
+  }
+
+  .info-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .sim-log {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: var(--mono);
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  #complete-canvas {
+    position: relative;
+    height: 360px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .canvas-node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .canvas-node .cn-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    transition: all 0.3s;
+  }
+  .canvas-node.cn-active .cn-box {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(6,182,212,0.35);
+    background: rgba(6,182,212,0.1);
+  }
+  .canvas-node.cn-done .cn-box {
+    border-color: var(--green);
+    background: rgba(16,185,129,0.1);
+  }
+  .canvas-node .cn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .canvas-node.cn-active .cn-label { color: var(--cyan); }
+
+  svg.arrows {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  @media (max-width: 900px) {
+    #sidebar { width: 180px; min-width: 180px; }
+    .section { padding: 20px; }
+    .grid2, .two-col { grid-template-columns: 1fr; }
+    .grid3, .three-col { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <span>⚡ WebFlow Lab</span>
+    <p>v1.0 · Interactive Simulator</p>
+  </div>
+  <div class="nav-group-label">Modules</div>
+  <div class="nav-item active" onclick="showSection('s1')"><div class="nav-dot"></div>Start Simulation</div>
+  <div class="nav-item" onclick="showSection('s2')"><div class="nav-dot"></div>Internet vs Web</div>
+  <div class="nav-item" onclick="showSection('s3')"><div class="nav-dot"></div>Client–Server</div>
+  <div class="nav-item" onclick="showSection('s4')"><div class="nav-dot"></div>DNS & URL</div>
+  <div class="nav-item" onclick="showSection('s5')"><div class="nav-dot"></div>HTTP Protocol</div>
+  <div class="nav-item" onclick="showSection('s6')"><div class="nav-dot"></div>Request Builder</div>
+  <div class="nav-item" onclick="showSection('s7')"><div class="nav-dot"></div>Server Processing</div>
+  <div class="nav-item" onclick="showSection('s8')"><div class="nav-dot"></div>HTTP Response</div>
+  <div class="nav-item" onclick="showSection('s9')"><div class="nav-dot"></div>Browser Rendering</div>
+  <div class="nav-item" onclick="showSection('s10')"><div class="nav-dot"></div>Sessions & Cookies</div>
+  <div class="nav-item" onclick="showSection('s11')"><div class="nav-dot"></div>Web Architecture</div>
+  <div class="nav-item" onclick="showSection('s12')"><div class="nav-dot"></div>HTTP vs HTTPS</div>
+  <div class="nav-item" onclick="showSection('s13')"><div class="nav-dot"></div>Complete Flow</div>
+  <div class="nav-item" onclick="showSection('s14')"><div class="nav-dot"></div>Security Thinking</div>
+  <div class="nav-item" onclick="showSection('s15')"><div class="nav-dot"></div>Real-World Sim</div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main id="main">
+
+<!-- S1: START SIMULATION -->
+<section class="section active" id="s1">
+  <div class="section-header">
+    <span class="section-badge badge-cyan">Lab 01</span>
+    <h1 class="section-title">Start Simulation</h1>
+  </div>
+  <div class="card" style="max-width:620px">
+    <div class="card-title">🌐 Enter a Website</div>
+    <div class="input-row">
+      <input type="text" id="sim-url" placeholder="e.g. google.com" value="google.com">
+      <button class="btn btn-cyan" onclick="startSimulation()">▶ Start</button>
+    </div>
+    <div class="step-list" id="sim-steps">
+      <div class="step-item" id="step-1"><div class="step-num">1</div><div><div class="step-text">User types URL</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-2"><div class="step-num">2</div><div><div class="step-text">Browser parses URL</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-3"><div class="step-num">3</div><div><div class="step-text">DNS Resolution</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-4"><div class="step-num">4</div><div><div class="step-text">TCP Connection established</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-5"><div class="step-num">5</div><div><div class="step-text">HTTP Request sent</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-6"><div class="step-num">6</div><div><div class="step-text">Server processes request</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-7"><div class="step-num">7</div><div><div class="step-text">HTTP Response received</div><div class="step-sub">Waiting...</div></div></div>
+      <div class="step-item" id="step-8"><div class="step-num">8</div><div><div class="step-text">Browser renders page</div><div class="step-sub">Waiting...</div></div></div>
+    </div>
+  </div>
+  <div class="card" style="max-width:620px;display:none" id="sim-result">
+    <div class="card-title">✅ Simulation Complete</div>
+    <div class="mini-browser">
+      <div class="mini-bar">
+        <div class="mini-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+        <div class="mini-url" id="mini-url-bar">https://google.com</div>
+      </div>
+      <div class="mini-content" id="mini-content">
+        <div style="display:flex;align-items:center;justify-content:center;height:100px;flex-direction:column;gap:10px;">
+          <div style="font-size:28px;font-weight:800;color:var(--cyan)" id="mini-site-name">Google</div>
+          <div style="font-size:12px;color:var(--text-dim)">Page loaded successfully · 200 OK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S2: INTERNET vs WEB -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <span class="section-badge badge-blue">Lab 02</span>
+    <h1 class="section-title">Internet vs Web</h1>
+  </div>
+  <div class="compare-row grid2">
+    <div class="card" style="border-color:rgba(59,130,246,0.4)">
+      <div class="card-title" style="color:var(--blue)">🌍 The Internet</div>
+      <div style="font-size:32px;margin-bottom:12px">🔌</div>
+      <p style="font-size:13px;color:var(--text-mid);line-height:1.7">The <strong style="color:var(--text)">physical & logical infrastructure</strong> — routers, cables, fiber, satellites, protocols like TCP/IP.</p>
+      <div style="margin:14px 0;height:1px;background:var(--border)"></div>
+      <div class="info-pill" style="margin-bottom:8px"><div class="pill-dot" style="background:var(--blue)"></div>TCP/IP Stack</div>
+      <div class="info-pill" style="margin-bottom:8px"><div class="pill-dot" style="background:var(--blue)"></div>Routers & Switches</div>
+      <div class="info-pill"><div class="pill-dot" style="background:var(--blue)"></div>IP Addressing</div>
+      <div style="margin-top:16px;padding:12px;background:rgba(59,130,246,0.07);border-radius:8px;font-size:12px;color:var(--text-mid)">
+        🛣️ <em>Analogy: The road network — highways, lanes, traffic rules</em>
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(16,185,129,0.4)">
+      <div class="card-title" style="color:var(--green)">🕸️ The World Wide Web</div>
+      <div style="font-size:32px;margin-bottom:12px">🌐</div>
+      <p style="font-size:13px;color:var(--text-mid);line-height:1.7">A <strong style="color:var(--text)">service running on the Internet</strong> — HTML documents, hyperlinks, browsers, HTTP/HTTPS protocol.</p>
+      <div style="margin:14px 0;height:1px;background:var(--border)"></div>
+      <div class="info-pill" style="margin-bottom:8px"><div class="pill-dot" style="background:var(--green)"></div>HTTP/HTTPS</div>
+      <div class="info-pill" style="margin-bottom:8px"><div class="pill-dot" style="background:var(--green)"></div>HTML Documents</div>
+      <div class="info-pill"><div class="pill-dot" style="background:var(--green)"></div>Browsers</div>
+      <div style="margin-top:16px;padding:12px;background:rgba(16,185,129,0.07);border-radius:8px;font-size:12px;color:var(--text-mid)">
+        🏙️ <em>Analogy: The cities & destinations ON those roads</em>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Key Distinction</div>
+    <div class="three-col">
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:20px;margin-bottom:8px">📧</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:4px">Email</div>
+        <div style="font-size:11px;color:var(--text-dim)">Uses Internet, NOT part of the Web</div>
+      </div>
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:20px;margin-bottom:8px">💬</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:4px">WhatsApp/Telegram</div>
+        <div style="font-size:11px;color:var(--text-dim)">Uses Internet, NOT the Web</div>
+      </div>
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:20px;margin-bottom:8px">🌍</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:4px">Websites</div>
+        <div style="font-size:11px;color:var(--text-dim)">Uses BOTH Internet + Web</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S3: CLIENT-SERVER -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <span class="section-badge badge-blue">Lab 03</span>
+    <h1 class="section-title">Client–Server Model</h1>
+  </div>
+  <div class="card">
+    <div class="card-title">Live Interaction Model</div>
+    <div class="flow-row" style="justify-content:center">
+      <div class="flow-node" id="cs-client" onclick="showCSInfo('client')">
+        <div class="icon">💻</div>
+        <div class="label">Client</div>
+      </div>
+      <div class="flow-arrow" id="cs-req-arrow">→</div>
+      <div class="flow-node" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.3)" id="cs-net">
+        <div class="icon">🌐</div>
+        <div class="label">Network</div>
+      </div>
+      <div class="flow-arrow" id="cs-res-arrow">→</div>
+      <div class="flow-node" onclick="showCSInfo('server')" id="cs-server">
+        <div class="icon">🖥️</div>
+        <div class="label">Server</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin:16px 0">
+      <button class="btn btn-cyan" onclick="animateCS()">▶ Send Request</button>
+      <button class="btn btn-outline" style="margin-left:10px" onclick="resetCS()">↺ Reset</button>
+    </div>
+    <div id="cs-info" class="tooltip-box" style="display:none"></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title" style="color:var(--blue)">🖥️ Client Role</div>
+      <ul style="font-size:12px;color:var(--text-mid);line-height:2;list-style:none">
+        <li>• Initiates all requests</li>
+        <li>• Runs browser (Chrome, Firefox…)</li>
+        <li>• Renders HTML/CSS/JS</li>
+        <li>• Manages cookies locally</li>
+        <li>• Displays responses to user</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--purple)">🖥️ Server Role</div>
+      <ul style="font-size:12px;color:var(--text-mid);line-height:2;list-style:none">
+        <li>• Listens for incoming requests</li>
+        <li>• Processes business logic</li>
+        <li>• Queries databases</li>
+        <li>• Manages sessions</li>
+        <li>• Returns HTTP responses</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- S4: DNS -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <span class="section-badge badge-yellow">Lab 04</span>
+    <h1 class="section-title">DNS & URL Resolution</h1>
+  </div>
+  <div class="card" style="max-width:640px">
+    <div class="card-title">🔍 Resolve a Domain</div>
+    <div class="input-row">
+      <input type="text" id="dns-input" placeholder="Enter domain (e.g. github.com)" value="github.com">
+      <button class="btn btn-cyan" onclick="resolveDNS()">Resolve</button>
+    </div>
+    <div id="dns-flow" style="display:none">
+      <div class="step-list" id="dns-steps"></div>
+      <div id="dns-result" style="display:none;margin-top:16px">
+        <div class="card" style="background:var(--green-glow);border-color:var(--green)">
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="font-size:28px">✅</div>
+            <div>
+              <div style="font-size:11px;font-family:var(--mono);color:var(--green);font-weight:700">DNS RESOLVED</div>
+              <div style="font-size:18px;font-weight:800;font-family:var(--mono)" id="dns-ip">142.250.185.14</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:3px" id="dns-domain-label">github.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔗 URL Anatomy</div>
+    <div class="code-block" style="font-size:14px;letter-spacing:0.02em">
+<span style="color:var(--purple)">https</span>://<span style="color:var(--cyan)">www.example.com</span>:<span style="color:var(--orange)">443</span><span style="color:var(--green)">/path/to/page</span><span style="color:var(--yellow)">?key=val</span><span style="color:var(--red)">#section</span></div>
+    <div class="three-col" style="margin-top:14px">
+      <div style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--purple);font-weight:700">Protocol</span><br><span style="color:var(--text-dim)">https — how to communicate</span></div>
+      <div style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--cyan);font-weight:700">Domain</span><br><span style="color:var(--text-dim)">www.example.com — who to talk to</span></div>
+      <div style="background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--orange);font-weight:700">Port</span><br><span style="color:var(--text-dim)">443 — which door to knock</span></div>
+      <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--green);font-weight:700">Path</span><br><span style="color:var(--text-dim)">/path/to/page — what resource</span></div>
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--yellow);font-weight:700">Query</span><br><span style="color:var(--text-dim)">?key=val — extra parameters</span></div>
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px;font-size:12px"><span style="color:var(--red);font-weight:700">Fragment</span><br><span style="color:var(--text-dim)">#section — page location</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- S5: HTTP PROTOCOL -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <span class="section-badge badge-purple">Lab 05</span>
+    <h1 class="section-title">HTTP Protocol</h1>
+  </div>
+  <div class="card">
+    <div class="card-title">📨 HTTP Request — Click any line to learn more</div>
+    <div class="code-block">
+<span class="code-line clickable" onclick="httpInfo('method')" id="hl-method"><span class="kw">GET</span> <span class="path">/login</span> <span class="ver">HTTP/1.1</span></span>
+<span class="code-line clickable" onclick="httpInfo('host')" id="hl-host"><span class="hkey">Host:</span> <span class="hval">example.com</span></span>
+<span class="code-line clickable" onclick="httpInfo('ua')" id="hl-ua"><span class="hkey">User-Agent:</span> <span class="hval">Mozilla/5.0 (Chrome)</span></span>
+<span class="code-line clickable" onclick="httpInfo('accept')" id="hl-accept"><span class="hkey">Accept:</span> <span class="hval">text/html,application/xhtml+xml</span></span>
+<span class="code-line clickable" onclick="httpInfo('cookie')" id="hl-cookie"><span class="hkey">Cookie:</span> <span class="hval">session_id=abc123</span></span>
+<span class="code-line clickable" onclick="httpInfo('conn')" id="hl-conn"><span class="hkey">Connection:</span> <span class="hval">keep-alive</span></span>
+    </div>
+    <div id="http-info-box"></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">HTTP Methods</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onclick="showMethod('GET')" style="cursor:pointer;padding:10px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;gap:10px" class="method-row"><span class="tag-method m-get">GET</span><span style="font-size:12px;color:var(--text-mid)">Retrieve a resource</span></div>
+        <div onclick="showMethod('POST')" style="cursor:pointer;padding:10px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;gap:10px" class="method-row"><span class="tag-method m-post">POST</span><span style="font-size:12px;color:var(--text-mid)">Submit data to server</span></div>
+        <div onclick="showMethod('PUT')" style="cursor:pointer;padding:10px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;gap:10px" class="method-row"><span class="tag-method m-put">PUT</span><span style="font-size:12px;color:var(--text-mid)">Update existing resource</span></div>
+        <div onclick="showMethod('DELETE')" style="cursor:pointer;padding:10px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;gap:10px" class="method-row"><span class="tag-method m-del">DELETE</span><span style="font-size:12px;color:var(--text-mid)">Remove a resource</span></div>
+      </div>
+      <div id="method-info"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">HTTP Versions Timeline</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="padding:10px;background:var(--surface2);border-radius:7px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);color:var(--yellow);font-weight:700">HTTP/1.0</span><span style="font-size:11px;color:var(--text-dim)">1996 · One request per TCP</span>
+        </div>
+        <div style="padding:10px;background:var(--surface2);border-radius:7px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);color:var(--blue);font-weight:700">HTTP/1.1</span><span style="font-size:11px;color:var(--text-dim)">1997 · Persistent connections</span>
+        </div>
+        <div style="padding:10px;background:var(--surface2);border-radius:7px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);color:var(--green);font-weight:700">HTTP/2</span><span style="font-size:11px;color:var(--text-dim)">2015 · Multiplexing, compression</span>
+        </div>
+        <div style="padding:10px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:7px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);color:var(--purple);font-weight:700">HTTP/3</span><span style="font-size:11px;color:var(--text-dim)">2022 · QUIC / UDP based</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S6: REQUEST BUILDER -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <span class="section-badge badge-yellow">Lab 06</span>
+    <h1 class="section-title">HTTP Request Builder</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">⚙️ Build Your Request</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.06em">Method</label>
+        <select id="rb-method">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>DELETE</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.06em">URL</label>
+        <input type="text" id="rb-url" value="https://api.example.com/users">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.06em">Request Body (JSON)</label>
+        <textarea id="rb-body" style="height:80px;resize:vertical">{"username": "alice", "password": "pass123"}</textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.06em">Authorization Header</label>
+        <input type="text" id="rb-auth" placeholder="Bearer token123...">
+      </div>
+      <button class="btn btn-cyan" onclick="sendRequest()" style="width:100%">▶ Send Request</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📡 Raw Request Preview</div>
+      <div class="code-block" id="request-preview" style="min-height:180px">Select method and URL to preview...</div>
+      <div style="margin-top:16px">
+        <div class="card-title">📥 Simulated Response</div>
+        <div id="response-output"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S7: SERVER PROCESSING -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <span class="section-badge badge-purple">Lab 07</span>
+    <h1 class="section-title">Server Processing Simulator</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🔐 Login Simulation</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px">Username</label>
+        <input type="text" id="sp-user" value="alice" placeholder="Enter username">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px">Password</label>
+        <input type="text" id="sp-pass" value="password123" placeholder="Enter password">
+      </div>
+      <button class="btn btn-cyan" onclick="simulateLogin()">▶ Process Login</button>
+      <div style="margin-top:14px;font-size:11px;color:var(--text-dim)">Try: alice / password123 (success) or any other (fail)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚙️ Backend Processing Log</div>
+      <div class="sim-log" id="sp-log">
+        <div class="log-line"><span class="ts">--:--:--</span><span class="info">[SERVER]</span> Waiting for request...</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0">
+    <div class="card-title">Visual Processing Flow</div>
+    <div class="flow-row" style="justify-content:center;flex-wrap:wrap;gap:8px">
+      <div class="flow-node" id="sp-n1"><div class="icon">📥</div><div class="label">Input</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" id="sp-n2"><div class="icon">🔍</div><div class="label">Validate</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" id="sp-n3"><div class="icon">🗄️</div><div class="label">DB Query</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" id="sp-n4"><div class="icon">⚙️</div><div class="label">Logic</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" id="sp-n5"><div class="icon">📤</div><div class="label">Response</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- S8: HTTP RESPONSE -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <span class="section-badge badge-green">Lab 08</span>
+    <h1 class="section-title">HTTP Response</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">📨 Typical HTTP Response</div>
+      <div class="code-block">
+<span class="code-line clickable" onclick="respInfo('status')"><span class="kw">HTTP/1.1</span> <span style="color:var(--green)">200</span> <span class="hval">OK</span></span>
+<span class="code-line clickable" onclick="respInfo('ct')"><span class="hkey">Content-Type:</span> <span class="hval">text/html; charset=utf-8</span></span>
+<span class="code-line clickable" onclick="respInfo('cl')"><span class="hkey">Content-Length:</span> <span class="num">4832</span></span>
+<span class="code-line clickable" onclick="respInfo('server')"><span class="hkey">Server:</span> <span class="hval">nginx/1.21.0</span></span>
+<span class="code-line clickable" onclick="respInfo('cookie')"><span class="hkey">Set-Cookie:</span> <span class="hval">session=xyz; HttpOnly; Secure</span></span>
+<span class="code-line clickable" onclick="respInfo('cache')"><span class="hkey">Cache-Control:</span> <span class="hval">no-cache, no-store</span></span>
+<span class="code-line" style="color:var(--text-dim)">
+<span style="color:var(--text-dim)">&lt;html&gt;...page content...&lt;/html&gt;</span></span>
+      </div>
+      <div id="resp-info-box"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔢 Status Code Explorer</div>
+      <div class="status-grid">
+        <div class="status-card s2xx" onclick="showStatus(200)"><div class="code">200</div><div class="name">OK</div></div>
+        <div class="status-card s2xx" onclick="showStatus(201)"><div class="code">201</div><div class="name">Created</div></div>
+        <div class="status-card s3xx" onclick="showStatus(301)"><div class="code">301</div><div class="name">Moved</div></div>
+        <div class="status-card s3xx" onclick="showStatus(302)"><div class="code">302</div><div class="name">Found</div></div>
+        <div class="status-card s4xx" onclick="showStatus(400)"><div class="code">400</div><div class="name">Bad Req</div></div>
+        <div class="status-card s4xx" onclick="showStatus(401)"><div class="code">401</div><div class="name">Unauth</div></div>
+        <div class="status-card s4xx" onclick="showStatus(403)"><div class="code">403</div><div class="name">Forbidden</div></div>
+        <div class="status-card s4xx" onclick="showStatus(404)"><div class="code">404</div><div class="name">Not Found</div></div>
+        <div class="status-card s5xx" onclick="showStatus(500)"><div class="code">500</div><div class="name">Server Err</div></div>
+        <div class="status-card s5xx" onclick="showStatus(503)"><div class="code">503</div><div class="name">Unavail</div></div>
+      </div>
+      <div id="status-info-box" style="margin-top:12px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- S9: BROWSER RENDERING -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <span class="section-badge badge-cyan">Lab 09</span>
+    <h1 class="section-title">Browser Rendering</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🎨 Rendering Pipeline</div>
+      <button class="btn btn-cyan btn-sm" onclick="animateRender()" style="margin-bottom:14px">▶ Animate</button>
+      <div class="render-stages">
+        <div class="render-stage rs-html" id="rs1">
+          <div class="rs-icon">📄</div>
+          <div class="rs-info">
+            <div class="rs-name">Parse HTML → DOM Tree</div>
+            <div class="rs-detail">Browser reads HTML, builds Document Object Model</div>
+          </div>
+        </div>
+        <div class="render-stage rs-css" id="rs2">
+          <div class="rs-icon">🎨</div>
+          <div class="rs-info">
+            <div class="rs-name">Parse CSS → CSSOM</div>
+            <div class="rs-detail">CSS Object Model built from stylesheets</div>
+          </div>
+        </div>
+        <div class="render-stage rs-js" id="rs3">
+          <div class="rs-icon">⚙️</div>
+          <div class="rs-info">
+            <div class="rs-name">Execute JavaScript</div>
+            <div class="rs-detail">JS engine runs scripts, may modify DOM</div>
+          </div>
+        </div>
+        <div class="render-stage" id="rs4" style="border-color:rgba(168,85,247,0.3)">
+          <div class="rs-icon">🌲</div>
+          <div class="rs-info">
+            <div class="rs-name">Render Tree = DOM + CSSOM</div>
+            <div class="rs-detail">Combines DOM and styles into render tree</div>
+          </div>
+        </div>
+        <div class="render-stage" id="rs5">
+          <div class="rs-icon">📐</div>
+          <div class="rs-info">
+            <div class="rs-name">Layout (Reflow)</div>
+            <div class="rs-detail">Browser calculates positions and sizes</div>
+          </div>
+        </div>
+        <div class="render-stage rs-final" id="rs6">
+          <div class="rs-icon">🖥️</div>
+          <div class="rs-info">
+            <div class="rs-name">Paint → Composite → Display</div>
+            <div class="rs-detail">Pixels drawn to screen — page is visible!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📦 Resources Loaded</div>
+      <div id="res-list">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Click ▶ Animate to see resources load</div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="card-title">🖥️ Final Output Preview</div>
+        <div class="mini-browser" id="rendered-preview" style="opacity:0.3;transition:opacity 0.5s">
+          <div class="mini-bar">
+            <div class="mini-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+            <div class="mini-url">https://example.com/page</div>
+          </div>
+          <div class="mini-content" id="rendered-html">
+            <div style="height:16px;background:var(--border);border-radius:4px;margin-bottom:10px;width:60%"></div>
+            <div style="height:10px;background:var(--border);border-radius:4px;margin-bottom:8px;width:90%"></div>
+            <div style="height:10px;background:var(--border);border-radius:4px;margin-bottom:8px;width:75%"></div>
+            <div style="height:10px;background:var(--border);border-radius:4px;width:80%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S10: SESSIONS & COOKIES -->
+<section class="section" id="s10">
+  <div class="section-header">
+    <span class="section-badge badge-yellow">Lab 10</span>
+    <h1 class="section-title">Sessions & Cookies</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🍪 Cookie Simulation</div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="ck-user" value="alice" placeholder="Username">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-cyan" onclick="cookieLogin()">🔐 Login</button>
+        <button class="btn btn-outline" onclick="cookieRequest()">📨 Make Request</button>
+        <button class="btn btn-outline" onclick="cookieLogout()">🚪 Logout</button>
+      </div>
+      <div class="card-title" style="margin-top:4px">Browser Cookie Jar</div>
+      <div class="cookie-jar" id="cookie-jar">
+        <div style="color:var(--text-dim);font-size:11px">No cookies stored</div>
+      </div>
+      <div id="ck-status" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔄 Session Lifecycle</div>
+      <div class="step-list">
+        <div class="step-item" id="ck-s1"><div class="step-num">1</div><div><div class="step-text">User submits login form</div><div class="step-sub">POST /login {user, pass}</div></div></div>
+        <div class="step-item" id="ck-s2"><div class="step-num">2</div><div><div class="step-text">Server validates credentials</div><div class="step-sub">DB lookup → match found</div></div></div>
+        <div class="step-item" id="ck-s3"><div class="step-num">3</div><div><div class="step-text">Server creates session</div><div class="step-sub">session_id = random_token</div></div></div>
+        <div class="step-item" id="ck-s4"><div class="step-num">4</div><div><div class="step-text">Cookie sent to browser</div><div class="step-sub">Set-Cookie: session=abc; HttpOnly</div></div></div>
+        <div class="step-item" id="ck-s5"><div class="step-num">5</div><div><div class="step-text">Future requests carry cookie</div><div class="step-sub">Cookie: session=abc (auto-sent)</div></div></div>
+        <div class="step-item" id="ck-s6"><div class="step-num">6</div><div><div class="step-text">Server identifies user by session</div><div class="step-sub">session → user_id → profile</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S11: WEB ARCHITECTURE -->
+<section class="section" id="s11">
+  <div class="section-header">
+    <span class="section-badge badge-blue">Lab 11</span>
+    <h1 class="section-title">Web Architecture</h1>
+  </div>
+  <div class="card" style="max-width:700px">
+    <div class="card-title">🏗️ Three-Tier Architecture — Click a Layer</div>
+    <div class="layer layer-fe" onclick="showLayer('fe')">
+      <div class="l-icon">🖥️</div>
+      <div>
+        <div class="l-name" style="color:var(--blue)">Frontend (Presentation Layer)</div>
+        <div class="l-desc">HTML, CSS, JavaScript — what users see and interact with</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px">›</div>
+    </div>
+    <div class="layer layer-be" onclick="showLayer('be')">
+      <div class="l-icon">⚙️</div>
+      <div>
+        <div class="l-name" style="color:var(--purple)">Backend (Application Layer)</div>
+        <div class="l-desc">Node.js, Python, PHP — business logic, APIs, authentication</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px">›</div>
+    </div>
+    <div class="layer layer-db" onclick="showLayer('db')">
+      <div class="l-icon">🗄️</div>
+      <div>
+        <div class="l-name" style="color:var(--orange)">Database (Data Layer)</div>
+        <div class="l-desc">MySQL, PostgreSQL, MongoDB — persistent data storage</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px">›</div>
+    </div>
+    <div id="layer-info" style="margin-top:8px"></div>
+  </div>
+  <div class="three-col" style="margin-top:0">
+    <div class="card" style="border-color:rgba(6,182,212,0.3)">
+      <div class="card-title" style="color:var(--cyan)">CDN</div>
+      <p style="font-size:12px;color:var(--text-mid);line-height:1.7">Content Delivery Network. Static assets served from edge servers near the user. Faster load times globally.</p>
+    </div>
+    <div class="card" style="border-color:rgba(168,85,247,0.3)">
+      <div class="card-title" style="color:var(--purple)">Load Balancer</div>
+      <p style="font-size:12px;color:var(--text-mid);line-height:1.7">Distributes incoming requests across multiple backend servers for reliability and performance.</p>
+    </div>
+    <div class="card" style="border-color:rgba(249,115,22,0.3)">
+      <div class="card-title" style="color:var(--orange)">Cache Layer</div>
+      <p style="font-size:12px;color:var(--text-mid);line-height:1.7">Redis/Memcached stores frequently-accessed data in memory to avoid repeated DB queries.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S12: HTTP vs HTTPS -->
+<section class="section" id="s12">
+  <div class="section-header">
+    <span class="section-badge badge-red">Lab 12</span>
+    <h1 class="section-title">HTTP vs HTTPS</h1>
+  </div>
+  <div class="compare-row" style="gap:16px;margin-bottom:18px">
+    <div class="compare-col http-col">
+      <div style="font-size:24px;margin-bottom:8px">🔓</div>
+      <div style="font-weight:800;font-size:16px;color:var(--red);margin-bottom:8px">HTTP</div>
+      <p style="font-size:12px;color:var(--text-mid);line-height:1.7;margin-bottom:12px">Data travels in plain text. Anyone intercepting traffic can read it. No certificate required.</p>
+      <div class="badge badge-red">INSECURE</div>
+    </div>
+    <div class="compare-col https-col">
+      <div style="font-size:24px;margin-bottom:8px">🔒</div>
+      <div style="font-weight:800;font-size:16px;color:var(--green);margin-bottom:8px">HTTPS</div>
+      <p style="font-size:12px;color:var(--text-mid);line-height:1.7;margin-bottom:12px">Data is TLS/SSL encrypted. Interceptors see gibberish. Requires SSL certificate from CA.</p>
+      <div class="badge badge-green">SECURE</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📦 Packet Interception Demo</div>
+    <button class="btn btn-cyan btn-sm" onclick="animatePackets()" style="margin-bottom:14px">▶ Intercept Packets</button>
+    <div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-family:var(--mono)">HTTP — Plain text (attacker can read):</div>
+      <div class="packet-line" id="http-packet">
+        <span style="color:var(--text-dim)">Intercepted →</span>
+        <span class="packet p-plain" id="http-data">POST /login · user=alice&pass=password123</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-family:var(--mono)">HTTPS — Encrypted (attacker sees noise):</div>
+      <div class="packet-line" id="https-packet">
+        <span style="color:var(--text-dim)">Intercepted →</span>
+        <span class="packet p-enc" id="https-data">TLSv1.3 · 🔒 EncryptedData</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px;padding:14px;background:rgba(16,185,129,0.05)">
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.7">
+        <strong style="color:var(--green)">TLS Handshake:</strong> Client and server negotiate cipher suite → exchange certificates → generate shared secret → all future data encrypted. Even if intercepted, attacker cannot decrypt without the session key.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S13: COMPLETE FLOW -->
+<section class="section" id="s13">
+  <div class="section-header">
+    <span class="section-badge badge-cyan">Lab 13</span>
+    <h1 class="section-title">Complete Flow Simulator</h1>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button class="btn btn-cyan" onclick="startCompleteFlow()">▶ Play Full Flow</button>
+      <button class="btn btn-outline btn-sm" onclick="resetCompleteFlow()">↺ Reset</button>
+      <span id="cf-step-label" style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Ready</span>
+    </div>
+    <div id="complete-canvas">
+      <svg class="arrows" id="cf-arrows"></svg>
+      <div class="canvas-node" id="cn-user" style="left:30px;top:140px">
+        <div class="cn-box">👤</div>
+        <div class="cn-label">User</div>
+      </div>
+      <div class="canvas-node" id="cn-browser" style="left:130px;top:140px">
+        <div class="cn-box">🌐</div>
+        <div class="cn-label">Browser</div>
+      </div>
+      <div class="canvas-node" id="cn-dns" style="left:260px;top:60px">
+        <div class="cn-box">📖</div>
+        <div class="cn-label">DNS</div>
+      </div>
+      <div class="canvas-node" id="cn-server" style="left:390px;top:140px">
+        <div class="cn-box">🖥️</div>
+        <div class="cn-label">Server</div>
+      </div>
+      <div class="canvas-node" id="cn-db" style="left:510px;top:240px">
+        <div class="cn-box">🗄️</div>
+        <div class="cn-label">Database</div>
+      </div>
+      <div class="canvas-node" id="cn-render" style="left:620px;top:140px">
+        <div class="cn-box">🖼️</div>
+        <div class="cn-label">Render</div>
+      </div>
+    </div>
+    <div class="card-title" style="margin-top:4px">Step Description</div>
+    <div id="cf-desc" class="tooltip-box" style="display:block">Click ▶ Play Full Flow to start the complete web request simulation.</div>
+  </div>
+</section>
+
+<!-- S14: SECURITY THINKING -->
+<section class="section" id="s14">
+  <div class="section-header">
+    <span class="section-badge badge-red">Lab 14</span>
+    <h1 class="section-title">Security Thinking</h1>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">🛡️ Trust Boundary Map</div>
+    <div style="display:flex;gap:0;margin-bottom:4px">
+      <div style="flex:1;padding:14px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:8px 0 0 8px">
+        <div style="font-weight:700;color:var(--blue);font-size:12px;margin-bottom:6px">🌍 Public Zone</div>
+        <div style="font-size:11px;color:var(--text-dim)">User inputs, URLs, cookies, headers — ALL untrusted. Anything from the client can be manipulated.</div>
+      </div>
+      <div style="width:36px;display:flex;align-items:center;justify-content:center;background:rgba(239,68,68,0.1);border-top:1px solid var(--red);border-bottom:1px solid var(--red);font-size:18px">🚧</div>
+      <div style="flex:1;padding:14px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:0 8px 8px 0">
+        <div style="font-weight:700;color:var(--green);font-size:12px;margin-bottom:6px">🔒 Trusted Zone</div>
+        <div style="font-size:11px;color:var(--text-dim)">Server-side code, database, session store — validate everything before it reaches here.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card-title" style="padding:0 0 10px">🤔 Security Questions — Click to Reveal Answers</div>
+  <div class="sec-question" onclick="this.classList.toggle('revealed')">
+    <div class="tag">INJECTION</div>
+    <div class="q">Where does user input enter the application? Where is it dangerous?</div>
+    <div class="a">User input enters through: URL parameters, form fields, HTTP headers, cookies. It becomes dangerous when it reaches: SQL queries (SQL injection), HTML output (XSS), OS commands (command injection), file paths (path traversal). RULE: Never trust user input. Always validate, sanitize, and escape.</div>
+  </div>
+  <div class="sec-question" onclick="this.classList.toggle('revealed')">
+    <div class="tag">AUTH</div>
+    <div class="q">Can a user change their session cookie to access another account?</div>
+    <div class="a">YES — if session IDs are predictable or not properly validated. Session IDs must be: cryptographically random (e.g. 128-bit), stored server-side mapped to user, validated on every request. If an attacker can guess or steal a session ID (session hijacking), they impersonate that user.</div>
+  </div>
+  <div class="sec-question" onclick="this.classList.toggle('revealed')">
+    <div class="tag">HTTP</div>
+    <div class="q">What happens when a GET request carries sensitive data in the URL?</div>
+    <div class="a">GET parameters appear in: browser history, server access logs, HTTP Referer headers, proxy logs. NEVER put passwords, tokens, or PII in GET parameters. Use POST with a request body + HTTPS for sensitive data transmission.</div>
+  </div>
+  <div class="sec-question" onclick="this.classList.toggle('revealed')">
+    <div class="tag">HTTPS</div>
+    <div class="q">Does HTTPS protect against all attacks?</div>
+    <div class="a">NO. HTTPS only encrypts data in transit. It does NOT protect against: server-side bugs, XSS (attacker runs code in-browser), CSRF (forged requests), stolen credentials, or compromised server. HTTPS is necessary but not sufficient for security.</div>
+  </div>
+  <div class="sec-question" onclick="this.classList.toggle('revealed')">
+    <div class="tag">COOKIES</div>
+    <div class="q">What makes cookies secure or insecure?</div>
+    <div class="a">Secure cookies use: HttpOnly flag (JS can't read = XSS safe), Secure flag (HTTPS only), SameSite=Strict (CSRF protection), short expiry. Insecure cookies: accessible to JS, sent over HTTP, no SameSite, stored with predictable values.</div>
+  </div>
+</section>
+
+<!-- S15: REAL-WORLD SIMULATION -->
+<section class="section" id="s15">
+  <div class="section-header">
+    <span class="section-badge badge-purple">Lab 15</span>
+    <h1 class="section-title">Real-World Simulation</h1>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🎭 Scenario: User Login</div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="rw-user" placeholder="Username" value="alice">
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="rw-pass" placeholder="Password" value="secret99">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:5px">Modify request parameter (attack simulation)</label>
+        <input type="text" id="rw-param" placeholder="role=user (try: role=admin)" value="role=user">
+      </div>
+      <button class="btn btn-cyan" onclick="realWorldSim()" style="width:100%">▶ Execute Request</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📡 Full Request/Response Trace</div>
+      <div class="sim-log" id="rw-log" style="min-height:260px">
+        <div class="log-line"><span class="ts">--:--:--</span><span class="info">[SIM]</span> Ready. Click Execute to start.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎮 Mini Challenge — Parameter Tampering</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:14px">
+      Try changing <span class="badge badge-yellow">role=user</span> to <span class="badge badge-red">role=admin</span> above and observe the server response. Real servers should NEVER trust client-supplied role parameters — these must come from the server's own session/database.
+    </div>
+    <div id="rw-challenge-result"></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ─── NAVIGATION ───────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const idx = ['s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s13','s14','s15'].indexOf(id);
+  if (idx >= 0) items[idx].classList.add('active');
+}
+
+// ─── S1: START SIMULATION ─────────────────────────────────
+function startSimulation() {
+  const url = document.getElementById('sim-url').value || 'google.com';
+  const domain = url.replace(/https?:\/\//, '').replace(/\/.*/, '');
+  const steps = [
+    { sub: `User typed: ${domain}`, msg: 'URL captured by browser' },
+    { sub: `Parsing protocol, host, path`, msg: 'URL structure analyzed' },
+    { sub: `Query: ${domain} → ?`, msg: 'DNS resolver contacted' },
+    { sub: `TCP SYN → SYN-ACK → ACK`, msg: 'Connection established on port 443' },
+    { sub: `GET / HTTP/1.1 Host: ${domain}`, msg: 'HTTP request sent' },
+    { sub: `Routing → logic → DB query`, msg: 'Server processing request' },
+    { sub: `HTTP/1.1 200 OK`, msg: 'Response received' },
+    { sub: `HTML → CSS → JS → Painted`, msg: 'Page rendered!' },
+  ];
+  let i = 0;
+  // reset
+  for (let j = 1; j <= 8; j++) {
+    const el = document.getElementById('step-' + j);
+    el.classList.remove('active', 'done');
+    el.querySelector('.step-sub').textContent = 'Waiting...';
+  }
+  document.getElementById('sim-result').style.display = 'none';
+  function next() {
+    if (i > 0) {
+      document.getElementById('step-' + i).classList.remove('active');
+      document.getElementById('step-' + i).classList.add('done');
+      document.getElementById('step-' + i).querySelector('.step-num').textContent = '✓';
+    }
+    if (i < steps.length) {
+      const el = document.getElementById('step-' + (i + 1));
+      el.classList.add('active');
+      el.querySelector('.step-sub').textContent = steps[i].sub;
+      i++;
+      setTimeout(next, 700);
+    } else {
+      document.getElementById('sim-result').style.display = 'block';
+      document.getElementById('mini-url-bar').textContent = `https://${domain}`;
+      document.getElementById('mini-site-name').textContent = domain.charAt(0).toUpperCase() + domain.slice(1).split('.')[0];
+    }
+  }
+  next();
+}
+
+// ─── S3: CLIENT-SERVER ────────────────────────────────────
+const csInfo = {
+  client: { title: 'Browser (Client)', text: 'The client is your web browser — Chrome, Firefox, Safari. It sends HTTP requests and renders responses. It NEVER trusts server data blindly; it sandboxes JavaScript and enforces same-origin policy.' },
+  server: { title: 'Web Server (Backend)', text: 'The server listens on port 80 (HTTP) or 443 (HTTPS). It receives requests, runs application logic, queries databases, and sends HTTP responses. It should NEVER trust client data — always validate and sanitize.' },
+};
+function showCSInfo(type) {
+  const box = document.getElementById('cs-info');
+  box.style.display = 'block';
+  box.innerHTML = `<div class="tt-title">${csInfo[type].title}</div>${csInfo[type].text}`;
+  document.getElementById('cs-' + type).classList.add('active-step');
+}
+function animateCS() {
+  resetCS();
+  setTimeout(() => { document.getElementById('cs-client').classList.add('active-step'); document.getElementById('cs-req-arrow').classList.add('active'); }, 200);
+  setTimeout(() => { document.getElementById('cs-net').classList.add('active-step'); }, 700);
+  setTimeout(() => { document.getElementById('cs-server').classList.add('active-step'); document.getElementById('cs-res-arrow').classList.add('active'); }, 1200);
+  setTimeout(() => {
+    document.getElementById('cs-info').style.display = 'block';
+    document.getElementById('cs-info').innerHTML = '<div class="tt-title">Request/Response Complete</div>Client sent a GET request → Network routed it → Server responded with 200 OK and HTML content → Client renders the page.';
+    document.getElementById('cs-client').classList.remove('active-step'); document.getElementById('cs-client').classList.add('done-step');
+    document.getElementById('cs-server').classList.remove('active-step'); document.getElementById('cs-server').classList.add('done-step');
+  }, 1800);
+}
+function resetCS() {
+  ['cs-client','cs-net','cs-server'].forEach(id => { document.getElementById(id).classList.remove('active-step','done-step'); });
+  document.getElementById('cs-req-arrow').classList.remove('active');
+  document.getElementById('cs-res-arrow').classList.remove('active');
+  document.getElementById('cs-info').style.display = 'none';
+}
+
+// ─── S4: DNS ──────────────────────────────────────────────
+const fakeIPs = { 'google.com':'142.250.185.14', 'github.com':'140.82.121.4', 'youtube.com':'142.250.185.110', 'facebook.com':'157.240.241.35', 'twitter.com':'104.244.42.65', 'amazon.com':'52.94.236.248' };
+function resolveDNS() {
+  const domain = document.getElementById('dns-input').value.toLowerCase().trim() || 'github.com';
+  const ip = fakeIPs[domain] || `${Math.floor(Math.random()*200+50)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+  document.getElementById('dns-flow').style.display = 'block';
+  document.getElementById('dns-result').style.display = 'none';
+  const stepsData = [
+    { text: 'Check browser DNS cache', sub: `Is ${domain} cached? → No` },
+    { text: 'Query OS resolver / local cache', sub: '/etc/hosts, system resolver' },
+    { text: 'Ask Recursive DNS resolver (ISP)', sub: '8.8.8.8 or ISP nameserver' },
+    { text: 'Resolver asks Root nameserver (.)', sub: '. (root) → who handles .com?' },
+    { text: 'Ask TLD nameserver (.com)', sub: '.com TLD → who handles domain?' },
+    { text: `Ask Authoritative nameserver for ${domain}`, sub: `Returns A record: ${ip}` },
+    { text: 'IP returned to browser', sub: `✓ ${domain} = ${ip}` },
+  ];
+  const container = document.getElementById('dns-steps');
+  container.innerHTML = '';
+  stepsData.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'step-item';
+    el.id = 'dns-step-' + i;
+    el.innerHTML = `<div class="step-num">${i+1}</div><div><div class="step-text">${s.text}</div><div class="step-sub">${s.sub}</div></div>`;
+    container.appendChild(el);
+  });
+  let idx = 0;
+  function next() {
+    if (idx > 0) { document.getElementById('dns-step-'+(idx-1)).classList.remove('active'); document.getElementById('dns-step-'+(idx-1)).classList.add('done'); document.getElementById('dns-step-'+(idx-1)).querySelector('.step-num').textContent = '✓'; }
+    if (idx < stepsData.length) {
+      document.getElementById('dns-step-'+idx).classList.add('active');
+      idx++;
+      setTimeout(next, 500);
+    } else {
+      document.getElementById('dns-ip').textContent = ip;
+      document.getElementById('dns-domain-label').textContent = domain;
+      document.getElementById('dns-result').style.display = 'block';
+    }
+  }
+  next();
+}
+
+// ─── S5: HTTP PROTOCOL ────────────────────────────────────
+const httpInfoData = {
+  method: { title: 'Request Line', text: 'GET = retrieve a resource. POST = submit data. The HTTP version (HTTP/1.1) tells the server which features are supported. The path (/login) is the resource being requested.' },
+  host: { title: 'Host Header', text: 'Required in HTTP/1.1. Tells the server which virtual host is being requested (one IP can host many domains). Essential for shared hosting and CDNs.' },
+  ua: { title: 'User-Agent Header', text: 'Identifies the client software (browser, OS, version). Servers use this for analytics, feature detection, or blocking bots. Can be spoofed easily — never rely on it for security.' },
+  accept: { title: 'Accept Header', text: 'Tells the server what content types the client can handle (content negotiation). Server picks the best format to return: HTML for browsers, JSON for APIs.' },
+  cookie: { title: 'Cookie Header', text: 'Automatically attached to every request to that domain. Session IDs, preferences, tracking data. HttpOnly cookies are inaccessible to JavaScript (XSS protection).' },
+  conn: { title: 'Connection Header', text: 'keep-alive = reuse TCP connection for multiple requests (HTTP/1.1 default). close = terminate after response. HTTP/2 multiplexes over a single connection automatically.' },
+};
+function httpInfo(key) {
+  document.querySelectorAll('.code-line.clickable').forEach(l => l.classList.remove('highlighted'));
+  document.getElementById('hl-' + key).classList.add('highlighted');
+  const d = httpInfoData[key];
+  document.getElementById('http-info-box').innerHTML = `<div class="tooltip-box"><div class="tt-title">${d.title}</div>${d.text}</div>`;
+}
+const methodInfo = {
+  GET: 'Retrieves a resource. Parameters in URL. Idempotent (safe to repeat). Cached by default. Never use for sensitive data.',
+  POST: 'Submits data in request body. NOT idempotent. Not cached. Used for forms, logins, creating resources.',
+  PUT: 'Replaces entire resource at given URL. Idempotent. Used in RESTful APIs for full updates.',
+  DELETE: 'Removes a resource. Idempotent. Requires proper authorization — dangerous if unprotected.',
+};
+function showMethod(m) {
+  document.getElementById('method-info').innerHTML = `<div class="tooltip-box" style="margin-top:10px"><div class="tt-title">${m}</div>${methodInfo[m]}</div>`;
+}
+
+// ─── S6: REQUEST BUILDER ──────────────────────────────────
+const responses = {
+  GET: { status: '200 OK', headers: 'Content-Type: application/json\nCache-Control: max-age=3600', body: '{\n  "users": [\n    {"id":1,"name":"Alice"},\n    {"id":2,"name":"Bob"}\n  ]\n}' },
+  POST: { status: '201 Created', headers: 'Content-Type: application/json\nLocation: /users/3', body: '{\n  "id": 3,\n  "message": "User created successfully",\n  "token": "eyJhbGci..."\n}' },
+  PUT: { status: '200 OK', headers: 'Content-Type: application/json', body: '{\n  "id": 1,\n  "message": "User updated",\n  "updated_at": "2025-01-01T12:00:00Z"\n}' },
+  DELETE: { status: '204 No Content', headers: 'X-Request-Id: req_8f3k2m', body: '' },
+};
+function updatePreview() {
+  const method = document.getElementById('rb-method').value;
+  const url = document.getElementById('rb-url').value;
+  const body = document.getElementById('rb-body').value;
+  const auth = document.getElementById('rb-auth').value;
+  let preview = `${method} ${url.replace(/https?:\/\/[^\/]+/, '') || '/'} HTTP/1.1\n`;
+  try { const u = new URL(url); preview = `${method} ${u.pathname || '/'} HTTP/1.1\nHost: ${u.host}\n`; } catch(e) {}
+  preview += `Content-Type: application/json\n`;
+  if (auth) preview += `Authorization: ${auth}\n`;
+  if (method !== 'GET' && body) preview += `\n${body}`;
+  document.getElementById('request-preview').textContent = preview;
+}
+['rb-method','rb-url','rb-body','rb-auth'].forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+document.getElementById('rb-method').addEventListener('change', updatePreview);
+updatePreview();
+function sendRequest() {
+  const method = document.getElementById('rb-method').value;
+  const r = responses[method];
+  const out = document.getElementById('response-output');
+  out.style.display = 'block';
+  out.innerHTML = `<span style="color:var(--green)">HTTP/1.1 ${r.status}</span>\n<span style="color:var(--yellow)">${r.headers}</span>\n${r.body ? '\n<span style="color:var(--text)">' + r.body + '</span>' : '<span style="color:var(--text-dim)">(empty body)</span>'}`;
+}
+
+// ─── S7: SERVER PROCESSING ────────────────────────────────
+function simulateLogin() {
+  const user = document.getElementById('sp-user').value;
+  const pass = document.getElementById('sp-pass').value;
+  const log = document.getElementById('sp-log');
+  const nodes = ['sp-n1','sp-n2','sp-n3','sp-n4','sp-n5'];
+  nodes.forEach(n => { document.getElementById(n).classList.remove('active-step','done-step'); });
+  log.innerHTML = '';
+  const success = user === 'alice' && pass === 'password123';
+  const now = () => new Date().toTimeString().slice(0,8);
+  const entries = [
+    [0, `[REQUEST] POST /login received`, 'info', 'sp-n1'],
+    [300, `[VALIDATE] Input check: user="${user}" len=${user.length}`, 'info', 'sp-n2'],
+    [600, `[DB QUERY] SELECT * FROM users WHERE username='${user}'`, 'warn', 'sp-n3'],
+    [900, success ? `[DB RESULT] User found: id=42, role=user` : `[DB RESULT] No user found`, success ? 'ok' : 'err', 'sp-n3'],
+    [1200, success ? `[LOGIC] Password hash matched ✓` : `[LOGIC] Password mismatch ✗`, success ? 'ok' : 'err', 'sp-n4'],
+    [1500, success ? `[SESSION] Created session_id=abc123xyz` : `[AUTH] Authentication failed`, success ? 'ok' : 'err', 'sp-n4'],
+    [1800, success ? `[RESPONSE] 200 OK + Set-Cookie: session=abc123xyz` : `[RESPONSE] 401 Unauthorized`, success ? 'ok' : 'err', 'sp-n5'],
+  ];
+  entries.forEach(([delay, msg, cls, nodeId]) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      div.innerHTML = `<span class="ts">${now()}</span><span class="${cls}">${msg}</span>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      const node = document.getElementById(nodeId);
+      nodes.forEach(n => document.getElementById(n).classList.remove('active-step'));
+      node.classList.add('active-step');
+    }, delay);
+  });
+  setTimeout(() => {
+    nodes.forEach(n => { document.getElementById(n).classList.remove('active-step'); document.getElementById(n).classList.add('done-step'); });
+  }, 2100);
+}
+
+// ─── S8: HTTP RESPONSE ────────────────────────────────────
+const respInfoData = {
+  status: { title: 'Status Line', text: '200 = success. The status code tells the client how to interpret the response. 2xx = success, 3xx = redirect, 4xx = client error, 5xx = server error.' },
+  ct: { title: 'Content-Type', text: 'Tells the browser how to interpret the response body. text/html → render as HTML, application/json → parse as JSON. Missing or wrong Content-Type causes MIME sniffing vulnerabilities.' },
+  cl: { title: 'Content-Length', text: 'Number of bytes in the response body. Allows the client to know when the response ends and allocate memory. Used for progress bars during download.' },
+  server: { title: 'Server Header', text: 'Identifies server software. Often hidden or spoofed for security (hiding nginx/apache version prevents targeted exploits). Not required by HTTP spec.' },
+  cookie: { title: 'Set-Cookie', text: 'Instructs browser to store a cookie. HttpOnly = no JS access. Secure = HTTPS only. SameSite = CSRF protection. These flags are CRITICAL for session security.' },
+  cache: { title: 'Cache-Control', text: 'no-store = never cache (login pages, sensitive data). max-age=3600 = cache for 1 hour. Proper caching improves performance but sensitive responses must use no-cache/no-store.' },
+};
+function respInfo(key) {
+  document.getElementById('resp-info-box').innerHTML = `<div class="tooltip-box"><div class="tt-title">${respInfoData[key].title}</div>${respInfoData[key].text}</div>`;
+}
+const statusData = {
+  200: { name: 'OK', desc: 'Request succeeded. Response body contains the requested resource.', cls: 'green' },
+  201: { name: 'Created', desc: 'Resource created successfully (POST). Location header points to new resource.', cls: 'green' },
+  301: { name: 'Moved Permanently', desc: 'Resource permanently moved. Browser caches redirect and future requests go to new URL automatically.', cls: 'blue' },
+  302: { name: 'Found (Redirect)', desc: 'Temporary redirect. Browser follows Location header but keeps using original URL for future requests.', cls: 'blue' },
+  400: { name: 'Bad Request', desc: 'Client sent malformed request (invalid JSON, missing required fields, invalid headers).', cls: 'yellow' },
+  401: { name: 'Unauthorized', desc: 'Authentication required. Client must provide valid credentials (usually via Authorization header or session cookie).', cls: 'yellow' },
+  403: { name: 'Forbidden', desc: 'Authenticated but not authorized. User exists but lacks permission for this resource.', cls: 'yellow' },
+  404: { name: 'Not Found', desc: 'Resource does not exist at this URL. Could also be intentionally returned instead of 403 to avoid revealing resource existence.', cls: 'yellow' },
+  500: { name: 'Internal Server Error', desc: 'Unhandled exception on server. Generic error when server crashes. Details should NOT be shown to clients in production.', cls: 'red' },
+  503: { name: 'Service Unavailable', desc: 'Server temporarily unavailable (overloaded or down for maintenance). Retry-After header may indicate when to try again.', cls: 'red' },
+};
+function showStatus(code) {
+  const s = statusData[code];
+  document.getElementById('status-info-box').innerHTML = `<div class="tooltip-box" style="border-color:var(--${s.cls})"><div class="tt-title" style="color:var(--${s.cls})">${code} — ${s.name}</div>${s.desc}</div>`;
+}
+
+// ─── S9: BROWSER RENDERING ────────────────────────────────
+function animateRender() {
+  const stages = ['rs1','rs2','rs3','rs4','rs5','rs6'];
+  const resources = [
+    '📄 index.html · 12 KB · 200 OK',
+    '🎨 styles.css · 8 KB · 200 OK',
+    '🎨 bootstrap.css · 32 KB · 304 Not Modified',
+    '⚙️ app.js · 45 KB · 200 OK',
+    '🖼️ logo.png · 18 KB · 200 OK',
+    '🖼️ hero.jpg · 120 KB · 200 OK',
+  ];
+  stages.forEach(id => document.getElementById(id).classList.remove('lit'));
+  document.getElementById('res-list').innerHTML = '';
+  document.getElementById('rendered-preview').style.opacity = '0.3';
+  stages.forEach((id, i) => {
+    setTimeout(() => {
+      document.getElementById(id).classList.add('lit');
+      if (i < resources.length) {
+        const d = document.createElement('div');
+        d.className = 'log-line';
+        d.innerHTML = `<span class="ok">${resources[i]}</span>`;
+        document.getElementById('res-list').appendChild(d);
+      }
+    }, i * 500);
+  });
+  setTimeout(() => {
+    document.getElementById('rendered-preview').style.opacity = '1';
+    document.getElementById('rendered-html').innerHTML = `
+      <div style="font-weight:800;font-size:15px;color:var(--cyan);margin-bottom:8px">Welcome to Example.com</div>
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.7;margin-bottom:10px">Your page has been fully rendered with HTML structure, CSS styles, and JavaScript interactions.</div>
+      <div style="display:flex;gap:8px"><div class="badge badge-green">200 OK</div><div class="badge badge-blue">HTML5</div><div class="badge badge-yellow">JS Active</div></div>`;
+  }, stages.length * 500 + 200);
+}
+
+// ─── S10: SESSIONS & COOKIES ──────────────────────────────
+let cookieStore = {};
+let sessionActive = false;
+function cookieLogin() {
+  const user = document.getElementById('ck-user').value || 'alice';
+  const sessionId = 'sess_' + Math.random().toString(36).slice(2,10);
+  cookieStore = { session_id: sessionId, username: user, logged_in: 'true', expires: 'Session' };
+  updateCookieJar();
+  sessionActive = true;
+  activateCookieSteps([1,2,3,4]);
+  document.getElementById('ck-status').innerHTML = `<div class="tooltip-box" style="border-color:var(--green)"><div class="tt-title" style="color:var(--green)">Login Successful</div>Session created. Cookie stored in browser. Server mapped ${sessionId} → user "${user}".</div>`;
+}
+function cookieRequest() {
+  if (!sessionActive) {
+    document.getElementById('ck-status').innerHTML = `<div class="tooltip-box" style="border-color:var(--red)"><div class="tt-title" style="color:var(--red)">Not Logged In</div>No session cookie exists. Server returns 401 Unauthorized.</div>`;
+    return;
+  }
+  activateCookieSteps([5,6]);
+  document.getElementById('ck-status').innerHTML = `<div class="tooltip-box"><div class="tt-title">Authenticated Request</div>Browser automatically attached Cookie: session_id=${cookieStore.session_id}. Server looked up session → identified user "${cookieStore.username}" → returned protected resource.</div>`;
+}
+function cookieLogout() {
+  cookieStore = {};
+  sessionActive = false;
+  updateCookieJar();
+  ['ck-s1','ck-s2','ck-s3','ck-s4','ck-s5','ck-s6'].forEach(id => { document.getElementById(id).classList.remove('active','done'); });
+  document.getElementById('ck-status').innerHTML = `<div class="tooltip-box" style="border-color:var(--yellow)"><div class="tt-title" style="color:var(--yellow)">Logged Out</div>Cookies cleared. Session invalidated on server. Any requests with old session ID will return 401.</div>`;
+}
+function updateCookieJar() {
+  const jar = document.getElementById('cookie-jar');
+  if (Object.keys(cookieStore).length === 0) { jar.innerHTML = '<div style="color:var(--text-dim);font-size:11px">No cookies stored</div>'; return; }
+  jar.innerHTML = Object.entries(cookieStore).map(([k,v]) => `<div class="cookie-entry"><span class="cookie-key">${k}</span><span style="color:var(--text-dim)">=</span><span class="cookie-val">${v}</span></div>`).join('');
+}
+function activateCookieSteps(nums) {
+  nums.forEach(n => {
+    const el = document.getElementById('ck-s'+n);
+    el.classList.remove('active');
+    void el.offsetWidth;
+    el.classList.add('active');
+    setTimeout(() => { el.classList.remove('active'); el.classList.add('done'); el.querySelector('.step-num').textContent = '✓'; }, 800);
+  });
+}
+
+// ─── S11: WEB ARCHITECTURE ────────────────────────────────
+const layerData = {
+  fe: { title: 'Frontend (Presentation Layer)', text: 'Technologies: HTML5, CSS3, JavaScript, React/Vue/Angular. Runs in the CLIENT\'s browser. Handles: UI rendering, form validation, user interactions, API calls via fetch()/XMLHttpRequest. Security concern: never store secrets here — all frontend code is visible to the user.' },
+  be: { title: 'Backend (Application Layer)', text: 'Technologies: Node.js/Express, Python/Django/Flask, PHP/Laravel, Java/Spring. Runs on the SERVER. Handles: authentication, authorization, business logic, data processing, API endpoints. Trust boundary: validates ALL input before touching the database.' },
+  db: { title: 'Database (Data Layer)', text: 'Technologies: MySQL, PostgreSQL, MongoDB, Redis. Persistent storage for application data. Security: never exposed directly to internet, use parameterized queries to prevent SQL injection, encrypt sensitive fields, regular backups, principle of least privilege.' },
+};
+function showLayer(key) {
+  document.getElementById('layer-info').innerHTML = `<div class="tooltip-box"><div class="tt-title">${layerData[key].title}</div>${layerData[key].text}</div>`;
+}
+
+// ─── S12: HTTP vs HTTPS ───────────────────────────────────
+function animatePackets() {
+  const httpEl = document.getElementById('http-data');
+  const httpsEl = document.getElementById('https-data');
+  httpEl.style.opacity = '0';
+  httpsEl.style.opacity = '0';
+  setTimeout(() => { httpEl.style.opacity = '1'; httpEl.style.transition = 'opacity 0.5s'; }, 300);
+  setTimeout(() => { httpsEl.style.opacity = '1'; httpsEl.style.transition = 'opacity 0.5s'; httpsEl.textContent = '🔒 TLSv1.3 · EncryptedData · ' + btoa('user=alice&pass=password123').slice(0,20) + '...'; }, 900);
+}
+
+// ─── S13: COMPLETE FLOW ───────────────────────────────────
+const cfSteps = [
+  { node: 'cn-user', label: 'Step 1: User types URL', desc: 'User types "https://example.com/login" into the browser address bar and presses Enter.' },
+  { node: 'cn-browser', label: 'Step 2: Browser parses URL', desc: 'Browser parses: protocol=HTTPS, host=example.com, path=/login. Checks if DNS is cached. Initiates TLS if needed.' },
+  { node: 'cn-dns', label: 'Step 3: DNS Resolution', desc: 'Browser queries DNS resolver: "What IP is example.com?" DNS returns: 93.184.216.34. Browser now has a target IP address.' },
+  { node: 'cn-browser', label: 'Step 4: TCP + TLS Handshake', desc: 'Browser opens TCP connection to 93.184.216.34:443. TLS handshake completes — encrypted tunnel established.' },
+  { node: 'cn-server', label: 'Step 5: HTTP Request Sent', desc: 'Browser sends: GET /login HTTP/1.1\\nHost: example.com\\nCookie: session=abc (if exists)' },
+  { node: 'cn-db', label: 'Step 6: Server Queries Database', desc: 'Server receives request. Runs business logic. Queries database: "SELECT user FROM sessions WHERE id=abc".' },
+  { node: 'cn-server', label: 'Step 7: Server Builds Response', desc: 'Server assembles: HTTP/1.1 200 OK + HTML body + Set-Cookie header. Sends back through encrypted TLS tunnel.' },
+  { node: 'cn-render', label: 'Step 8: Browser Renders Page', desc: 'Browser receives HTML → parses DOM → fetches CSS/JS/images → executes JavaScript → paints final page. User sees the website!' },
+];
+let cfIndex = 0;
+let cfTimer = null;
+function resetCompleteFlow() {
+  clearTimeout(cfTimer);
+  cfIndex = 0;
+  document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('cn-active','cn-done'));
+  document.getElementById('cf-step-label').textContent = 'Ready';
+  document.getElementById('cf-desc').innerHTML = 'Click ▶ Play Full Flow to start the complete web request simulation.';
+  drawArrows();
+}
+function startCompleteFlow() {
+  resetCompleteFlow();
+  runCFStep();
+}
+function runCFStep() {
+  if (cfIndex >= cfSteps.length) {
+    document.getElementById('cf-step-label').textContent = '✓ Complete!';
+    document.getElementById('cf-desc').innerHTML = `<strong style="color:var(--green)">🎉 Full flow complete!</strong> The user's request traveled from browser → DNS → server → database → back to browser where it was rendered into a visible web page. Every step happens in milliseconds.`;
+    return;
+  }
+  const step = cfSteps[cfIndex];
+  if (cfIndex > 0) {
+    const prev = cfSteps[cfIndex - 1];
+    document.getElementById(prev.node).classList.remove('cn-active');
+    document.getElementById(prev.node).classList.add('cn-done');
+  }
+  document.getElementById(step.node).classList.add('cn-active');
+  document.getElementById('cf-step-label').textContent = step.label;
+  document.getElementById('cf-desc').innerHTML = step.desc;
+  cfIndex++;
+  cfTimer = setTimeout(runCFStep, 1400);
+}
+function drawArrows() {
+  const svg = document.getElementById('cf-arrows');
+  const cnv = document.getElementById('complete-canvas');
+  const rect = cnv.getBoundingClientRect();
+  const pairs = [['cn-user','cn-browser'],['cn-browser','cn-dns'],['cn-browser','cn-server'],['cn-server','cn-db'],['cn-server','cn-render']];
+  svg.innerHTML = '';
+  pairs.forEach(([aId, bId]) => {
+    const a = document.getElementById(aId);
+    const b = document.getElementById(bId);
+    if (!a || !b) return;
+    const ar = a.getBoundingClientRect();
+    const br = b.getBoundingClientRect();
+    const ax = ar.left - rect.left + ar.width/2;
+    const ay = ar.top - rect.top + ar.height/2;
+    const bx = br.left - rect.left + br.width/2;
+    const by = br.top - rect.top + br.height/2;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',ax); line.setAttribute('y1',ay);
+    line.setAttribute('x2',bx); line.setAttribute('y2',by);
+    line.setAttribute('stroke','#1f2d42'); line.setAttribute('stroke-width','2');
+    line.setAttribute('stroke-dasharray','5,4');
+    svg.appendChild(line);
+  });
+}
+setTimeout(drawArrows, 100);
+window.addEventListener('resize', drawArrows);
+
+// ─── S15: REAL-WORLD SIMULATION ───────────────────────────
+function realWorldSim() {
+  const user = document.getElementById('rw-user').value;
+  const pass = document.getElementById('rw-pass').value;
+  const param = document.getElementById('rw-param').value;
+  const log = document.getElementById('rw-log');
+  log.innerHTML = '';
+  const isAdmin = param.includes('role=admin') || param.includes('admin=true');
+  const now = () => new Date().toTimeString().slice(0,8);
+  const lines = [
+    [0, 'info', `[CLIENT] POST https://app.example.com/login`],
+    [200, 'info', `[HEADERS] Content-Type: application/json`],
+    [300, 'warn', `[BODY] {"username":"${user}","password":"${pass}","${param}"}`],
+    [600, 'info', `[SERVER] Request received on port 443 (TLS)`],
+    [800, 'info', `[SERVER] Parsing JSON body...`],
+    [1000, 'warn', `[SERVER] Checking credentials for user: ${user}`],
+    [1300, 'ok', `[DB] SELECT * FROM users WHERE username='${user}' → Found`],
+    [1600, isAdmin ? 'err' : 'ok', isAdmin ? `[SECURITY] ⚠️ Attempt to self-assign admin role blocked!` : `[DB] Role from DB: user (ignoring client-supplied role)`],
+    [1900, 'ok', `[SESSION] Created session: ${Math.random().toString(36).slice(2,12)}`],
+    [2200, 'ok', `[RESPONSE] HTTP/1.1 200 OK`],
+    [2400, 'ok', `[COOKIE] Set-Cookie: session=...; HttpOnly; Secure; SameSite=Strict`],
+  ];
+  lines.forEach(([delay, cls, msg]) => {
+    setTimeout(() => {
+      const d = document.createElement('div');
+      d.className = 'log-line';
+      d.innerHTML = `<span class="ts">${now()}</span><span class="${cls}">${msg}</span>`;
+      log.appendChild(d);
+      log.scrollTop = log.scrollHeight;
+    }, delay);
+  });
+  setTimeout(() => {
+    if (isAdmin) {
+      document.getElementById('rw-challenge-result').innerHTML = `<div class="tooltip-box" style="border-color:var(--red)"><div class="tt-title" style="color:var(--red)">⚠️ Attack Detected & Blocked</div>The server correctly IGNORED the client-supplied role=admin parameter. Role/permissions must ALWAYS come from the server-side session/database, never from user input. This attack is called "Mass Assignment" or "Parameter Tampering". Well-designed servers whitelist allowed parameters and ignore the rest.</div>`;
+    } else {
+      document.getElementById('rw-challenge-result').innerHTML = `<div class="tooltip-box" style="border-color:var(--green)"><div class="tt-title" style="color:var(--green)">✓ Normal Flow</div>Login succeeded. Session created. Role assigned from database, not from client input. Try changing the parameter to role=admin to see the attack simulation!</div>`;
+    }
+  }, 2600);
+}
+
+// ─── Init ──────────────────────────────────────────────────
+updatePreview();
+</script>
+</body>
+</html>
